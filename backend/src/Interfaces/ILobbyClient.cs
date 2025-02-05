@@ -9,6 +9,7 @@ namespace Mafia.Interfaces
         Task PlayerLeft(string playerName);
         Task PlayerReconnected(string playerName);
         Task Reconnected(string playerName);
+        Task GameStarted(string lobbyId);
         Task Error(string error);
     }
 }

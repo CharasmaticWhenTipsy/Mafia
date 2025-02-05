@@ -5,12 +5,14 @@ using Mafia.Models;
 using System;
 using System.Linq;
 using Mafia.Interfaces;
+using Mafia.Services;
 
 namespace Mafia.Hubs
 {
     public class LobbyHub : Hub<ILobbyClient>
     {
         private static Dictionary<string, Lobby> _lobbies = new Dictionary<string, Lobby>();
+        private readonly GameService gameService;
         private static Random _random = new Random();
 
         // TODO
@@ -36,7 +38,7 @@ namespace Mafia.Hubs
             var lobby = new Lobby
             {
                 LobbyId = lobbyId,
-                State = GameState.Waiting
+                State = GameState.Lobby
             };
 
             _lobbies[lobbyId] = lobby;
@@ -71,7 +73,7 @@ namespace Mafia.Hubs
                 await Clients.Caller.Error("Player name is already taken.");
             }
 
-            if (lobby.State != GameState.Waiting)
+            if (lobby.State != GameState.Lobby)
             {
                 await Clients.Caller.Error("Cannot join. The game has already started.");
                 // return message and prompt join as spectator.
@@ -94,9 +96,7 @@ namespace Mafia.Hubs
         // Method to start the game
         public async Task StartGame(string lobbyId)
         {
-
             // auth host
-
             if (!_lobbies.ContainsKey(lobbyId))
             {
                 await Clients.Caller.Error("Lobby does not exist.");
@@ -105,7 +105,7 @@ namespace Mafia.Hubs
 
             var lobby = _lobbies[lobbyId];
 
-            if (lobby.State != GameState.Waiting)
+            if (lobby.State != GameState.Lobby)
             {
                 await Clients.Caller.Error("Game cannot be started. It is either already started or finished.");
                 return;
@@ -118,7 +118,11 @@ namespace Mafia.Hubs
             // day time max timer, with skip option available. => basically vote to go to night time.
             // night time lasts one minute or 30 seconds or something.
 
-            await Clients.Group(lobbyId).Error("GameStarted");
+            await Clients.Group(lobbyId).GameStarted(lobbyId); // ??
+
+            gameService.SetupGame(lobby);
+
+
         }
 
         // Handle player disconnect

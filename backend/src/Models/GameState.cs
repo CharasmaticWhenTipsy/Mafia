@@ -2,7 +2,7 @@ namespace Mafia.Models
 {
     public enum GameState
     {
-        Waiting,
+        Lobby,
         InProgress
     }
 }
