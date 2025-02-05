@@ -13,6 +13,7 @@ namespace Mafia.Hubs
     {
         private static Dictionary<string, Lobby> _lobbies = new Dictionary<string, Lobby>();
         private readonly GameService gameService;
+        private readonly LobbyService lobbyService;
         private static Random _random = new Random();
 
         // TODO
@@ -22,18 +23,7 @@ namespace Mafia.Hubs
         // Create a new lobby
         public async Task CreateLobby(string userName)
         {
-
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            string lobbyId;
-
-            do
-            {
-                lobbyId = new string(Enumerable.Range(0, 5)
-                    .Select(_ => chars[_random.Next(chars.Length)])
-                    .ToArray()
-                );
-
-            } while (_lobbies.ContainsKey(lobbyId));  // Ensure the generated ID is unique
+            string lobbyId = lobbyService.GenerateLobbyId(_lobbies.Keys.ToList());
 
             var lobby = new Lobby
             {
@@ -42,10 +32,8 @@ namespace Mafia.Hubs
             };
 
             _lobbies[lobbyId] = lobby;
-
             await Clients.Caller.LobbyCreated(lobbyId);
-
-            await JoinLobby(lobbyId, userName); // Also join user to lobby.
+            await JoinLobby(lobbyId, userName); // Also join caller to lobby.
         }
 
         // Method to join a lobby
