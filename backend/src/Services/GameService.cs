@@ -52,6 +52,7 @@ namespace Mafia.Services
                 }
                 playerIndex++;
             }
+            return;
         }
         private static T GetRandomEnumValue<T>(int minValue)
         {
