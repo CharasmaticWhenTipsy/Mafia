@@ -1,10 +1,8 @@
 namespace Mafia.Models
 {
-    public enum Role
+    public enum TownRole
     {
         None,
-        Mafioso,
-        Godfather,
         Vigilante,
         Doctor,
         Investigator,

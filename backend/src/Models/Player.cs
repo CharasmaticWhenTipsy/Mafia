@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace Mafia.Models
 {
     // Example Player class to track players
@@ -15,7 +13,8 @@ namespace Mafia.Models
         public string ConnectionId { get; private set; }
         public bool IsHost { get; set; } = false;
         public Team Team { get; set; } = Team.None;
-        public Role Role { get; set; } = Role.None;
+        public TownRole TownRole { get; set; } = TownRole.None;
+        public MafiaRole MafiaRole { get; set; } = MafiaRole.None;
         public bool IsAlive { get; set; } = true;
     }
 }
