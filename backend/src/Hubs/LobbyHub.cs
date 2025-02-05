@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 using Mafia.Models;
 using System;
 using System.Linq;
+using Mafia.Interfaces;
 
 namespace Mafia.Hubs
 {
-    public class LobbyHub : Hub
+    public class LobbyHub : Hub<ILobbyClient>
     {
-        // Dictionary to track all the lobbies
         private static Dictionary<string, Lobby> _lobbies = new Dictionary<string, Lobby>();
         private static Random _random = new Random();
 
@@ -21,10 +21,9 @@ namespace Mafia.Hubs
         public async Task CreateLobby(string userName)
         {
 
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";  // Possible characters for the lobby ID
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             string lobbyId;
 
-            // Generate a unique lobby ID
             do
             {
                 lobbyId = new string(Enumerable.Range(0, 5)
@@ -42,7 +41,7 @@ namespace Mafia.Hubs
 
             _lobbies[lobbyId] = lobby;
 
-            await Clients.Caller.SendAsync("LobbyCreated", lobbyId);
+            await Clients.Caller.LobbyCreated(lobbyId);
 
             await JoinLobby(lobbyId, userName); // Also join user to lobby.
         }
@@ -52,7 +51,7 @@ namespace Mafia.Hubs
         {
             if (!_lobbies.ContainsKey(lobbyId))
             {
-                await Clients.Caller.SendAsync("Error", "Lobby does not exist.");
+                await Clients.Caller.Error("Lobby does not exist.");
                 return;
             }
 
@@ -62,19 +61,19 @@ namespace Mafia.Hubs
             if (IsPlayerInLobbyByConnectionId(lobby, Context.ConnectionId))
             {
                 // alternatively update name to new name and carry on
-                await Clients.Caller.SendAsync("Error", "Player already in the lobby.");
+                await Clients.Caller.Error("Player already in the lobby.");
                 return;
             }
 
             // Player name exists?
             if (lobby.Players.Any(p => p.PlayerName == playerName))
             {
-                await Clients.Caller.SendAsync("Error", "Player name is already taken.");
+                await Clients.Caller.Error("Player name is already taken.");
             }
 
             if (lobby.State != GameState.Waiting)
             {
-                await Clients.Caller.SendAsync("Error", "Cannot join. The game has already started.");
+                await Clients.Caller.Error("Cannot join. The game has already started.");
                 // return message and prompt join as spectator.
                 return;
             }
@@ -89,7 +88,7 @@ namespace Mafia.Hubs
             }
 
             await Groups.AddToGroupAsync(Context.ConnectionId, lobbyId);
-            await Clients.Group(lobbyId).SendAsync("PlayerJoined", playerName);
+            await Clients.Group(lobbyId).PlayerConnected(playerName);
         }
 
         // Method to start the game
@@ -100,7 +99,7 @@ namespace Mafia.Hubs
 
             if (!_lobbies.ContainsKey(lobbyId))
             {
-                await Clients.Caller.SendAsync("Error", "Lobby does not exist.");
+                await Clients.Caller.Error("Lobby does not exist.");
                 return;
             }
 
@@ -108,7 +107,7 @@ namespace Mafia.Hubs
 
             if (lobby.State != GameState.Waiting)
             {
-                await Clients.Caller.SendAsync("Error", "Game cannot be started. It is either already started or finished.");
+                await Clients.Caller.Error("Game cannot be started. It is either already started or finished.");
                 return;
             }
 
@@ -119,7 +118,7 @@ namespace Mafia.Hubs
             // day time max timer, with skip option available. => basically vote to go to night time.
             // night time lasts one minute or 30 seconds or something.
 
-            await Clients.Group(lobbyId).SendAsync("GameStarted");
+            await Clients.Group(lobbyId).Error("GameStarted");
         }
 
         // Handle player disconnect
@@ -133,7 +132,9 @@ namespace Mafia.Hubs
                 {
                     lobby.Players.Remove(lobby.Players.Find(p => p.ConnectionId == playerConnectionId));
 
-                    await Clients.Group(lobby.LobbyId).SendAsync("PlayerLeft", playerConnectionId);
+                    // pretty sure we want to post the name here?
+                    // alternatively we return a key value for this.
+                    await Clients.Group(lobby.LobbyId).PlayerLeft(playerConnectionId);
                     break;
                 }
             }
@@ -146,7 +147,7 @@ namespace Mafia.Hubs
         {
             if (!_lobbies.ContainsKey(lobbyId))
             {
-                await Clients.Caller.SendAsync("Error", "Lobby does not exist.");
+                await Clients.Caller.Error("Lobby does not exist.");
                 return;
             }
 
@@ -155,8 +156,8 @@ namespace Mafia.Hubs
             if (IsPlayerInLobbyByConnectionId(lobby, playerName))
             {
                 // lobby.ReconnectedPlayers.Add(playerName); // ?? surely we add this to normal players list or something
-                await Clients.Caller.SendAsync("Reconnected", playerName);
-                await Clients.Group(lobbyId).SendAsync("PlayerReconnected", playerName);
+                await Clients.Caller.Reconnected(playerName);
+                await Clients.Group(lobbyId).PlayerReconnected(playerName);
             }
         }
 
