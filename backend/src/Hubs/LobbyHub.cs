@@ -13,6 +13,10 @@ namespace Mafia.Hubs
         private static Dictionary<string, Lobby> _lobbies = new Dictionary<string, Lobby>();
         private static Random _random = new Random();
 
+        // TODO
+        // add functionality to remove players during lobby.
+        // Remove Lobby on close, or meeting other conditions, when user leaves => check if last member of lobby if so close, inactive lobby for ten mins = close ?
+
         // Create a new lobby
         public async Task CreateLobby(string userName)
         {
@@ -23,9 +27,10 @@ namespace Mafia.Hubs
             // Generate a unique lobby ID
             do
             {
-                lobbyId = new string(Enumerable.Range(0, 5)  // Length of the generated ID (5 characters)
-                    .Select(_ => chars[_random.Next(chars.Length)]) // Select random character from chars
-                    .ToArray());
+                lobbyId = new string(Enumerable.Range(0, 5)
+                    .Select(_ => chars[_random.Next(chars.Length)])
+                    .ToArray()
+                );
 
             } while (_lobbies.ContainsKey(lobbyId));  // Ensure the generated ID is unique
 
@@ -35,16 +40,14 @@ namespace Mafia.Hubs
                 State = GameState.Waiting
             };
 
-            _lobbies[lobbyId] = lobby; // TODO Remove Lobby on close, or meeting other conditions, when user leaves => check if last member of lobby if so close, inactive lobby for ten mins = close ?
+            _lobbies[lobbyId] = lobby;
 
-            // Notify the caller that the lobby was created
             await Clients.Caller.SendAsync("LobbyCreated", lobbyId);
 
             await JoinLobby(lobbyId, userName); // Also join user to lobby.
         }
 
-        // Method to join a specific lobby
-        //We probably call this directly after creating the lobby, or we make the client join the lobby automatically.
+        // Method to join a lobby
         public async Task JoinLobby(string lobbyId, string playerName)
         {
             if (!_lobbies.ContainsKey(lobbyId))
@@ -55,34 +58,46 @@ namespace Mafia.Hubs
 
             var lobby = _lobbies[lobbyId];
 
-            // some form of spectator mode ?
-            if (lobby.State != GameState.Waiting)
-            {
-                await Clients.Caller.SendAsync("Error", "Cannot join. The game has already started.");
-                return;
-            }
 
-            // private function for if player is in lobby => pass it lobby and playerName?
-
-            if (lobby.Players.Select(p => p.PlayerName).Contains(playerName)) // Select names as list or something here
+            if (IsPlayerInLobbyByConnectionId(lobby, Context.ConnectionId))
             {
+                // alternatively update name to new name and carry on
                 await Clients.Caller.SendAsync("Error", "Player already in the lobby.");
                 return;
             }
 
-            Player newPlayer = new Player(
-                playerName, Context.ConnectionId
-            );
+            // Player name exists?
+            if (lobby.Players.Any(p => p.PlayerName == playerName))
+            {
+                await Clients.Caller.SendAsync("Error", "Player name is already taken.");
+            }
 
-            lobby.Players.Add(newPlayer); // gen new Player then add.
+            if (lobby.State != GameState.Waiting)
+            {
+                await Clients.Caller.SendAsync("Error", "Cannot join. The game has already started.");
+                // return message and prompt join as spectator.
+                return;
+            }
+
+            Player newPlayer = new Player(playerName, Context.ConnectionId);
+
+            lobby.Players.Add(newPlayer);
+
+            if (lobby.Players.Count() == 1)  // If Joining Lobby as the only player, become host.
+            {
+                lobby.Players.Find(p => p.ConnectionId == newPlayer.ConnectionId).IsHost = true;
+            }
+
             await Groups.AddToGroupAsync(Context.ConnectionId, lobbyId);
-
             await Clients.Group(lobbyId).SendAsync("PlayerJoined", playerName);
         }
 
-        // Method to start the game in a specific lobby
+        // Method to start the game
         public async Task StartGame(string lobbyId)
         {
+
+            // auth host
+
             if (!_lobbies.ContainsKey(lobbyId))
             {
                 await Clients.Caller.SendAsync("Error", "Lobby does not exist.");
@@ -107,14 +122,14 @@ namespace Mafia.Hubs
             await Clients.Group(lobbyId).SendAsync("GameStarted");
         }
 
-        // Handle player disconnection
+        // Handle player disconnect
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             var playerConnectionId = Context.ConnectionId;
 
             foreach (var lobby in _lobbies.Values)
             {
-                if (lobby.Players.Select(p => p.ConnectionId).Contains(playerConnectionId)) // remove them form every lobby, they should only belong to a single lobby ?
+                if (lobby.Players.Select(p => p.ConnectionId).Contains(playerConnectionId)) // remove them from every lobby, they should only belong to a single lobby ?
                 {
                     lobby.Players.Remove(lobby.Players.Find(p => p.ConnectionId == playerConnectionId));
 
@@ -126,7 +141,7 @@ namespace Mafia.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        // Handle player reconnection
+        // Handle player reconnect
         public async Task ReconnectGame(string lobbyId, string playerName)
         {
             if (!_lobbies.ContainsKey(lobbyId))
@@ -137,24 +152,15 @@ namespace Mafia.Hubs
 
             var lobby = _lobbies[lobbyId];
 
-            // TODO: Remove this, reconnecting is valid at all times because of the loop nature of the game.
-            // Lobby leader can remove players perhaps?
-
-            if (lobby.State == GameState.Finished)
+            if (IsPlayerInLobbyByConnectionId(lobby, playerName))
             {
-                await Clients.Caller.SendAsync("Error", "The game is over. You cannot reconnect.");
-                return;
-            }
-
-            if (IsPlayerInLobbyByPlayerName(lobby, playerName) && !lobby.ReconnectedPlayers.Contains(playerName))
-            {
-                lobby.ReconnectedPlayers.Add(playerName); // ?? surely we add this to normal players list or something
+                // lobby.ReconnectedPlayers.Add(playerName); // ?? surely we add this to normal players list or something
                 await Clients.Caller.SendAsync("Reconnected", playerName);
                 await Clients.Group(lobbyId).SendAsync("PlayerReconnected", playerName);
             }
         }
 
-        private bool IsPlayerInLobbyByPlayerName(Lobby lobby, string playerName)
+        private bool IsPlayerInLobbyByConnectionId(Lobby lobby, string playerName)
         {
             return lobby.Players.Select(p => p.PlayerName).Contains(playerName);
         }
