@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  backend:
+    image: mafia
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    networks:
+      - mynetwork
+
+  frontend:
+    build:
+      context: ./frontend # Set this to your frontend directory
+      dockerfile: Dockerfile # Dockerfile inside the 'frontend' directory
+    ports:
+      - "3000:80" # Exposing frontend on port 3000
+    networks:
+      - mynetwork
+    volumes:
+      - ./frontend:/app # Optional: Mount local frontend files to container for dev
+      - /app/node_modules # Ensures container's node_modules don't get overwritte
+
+networks:
+  mynetwork:
+    driver: bridge

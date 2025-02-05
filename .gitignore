@@ -1,0 +1,79 @@
+# .NET / C# / ASP.NET Core Backend
+
+# .NET build output
+bin/
+obj/
+
+# .NET user-specific files
+.vs/
+
+# ASP.NET Core runtime-specific files
+project.lock.json
+project.fragment.lock.json
+
+# User-specific files (e.g., Visual Studio)
+.vs/
+
+# Rider user-specific files (JetBrains)
+.idea/
+
+# Build output
+publish/
+wwwroot/
+
+# Node.js / Frontend (React with TypeScript)
+
+# Node modules
+node_modules/
+
+# Build output
+build/
+dist/
+
+# Vite (or other bundlers' cache)
+.vite/
+
+# TypeScript build output
+*.tsbuildinfo
+*.js
+*.jsx
+*.d.ts
+
+# React / Next.js / Webpack / Babel build output
+*.webpack/
+
+# Logs
+*.log
+
+# Environment variables and secrets
+.env
+*.env.local
+
+# NPM/Yarn lock files (choose one)
+package-lock.json
+yarn.lock
+
+# Coverage directory (from testing tools like Jest)
+coverage/
+
+# Editor files
+.idea/
+.vscode/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Personal files
+*.sublime-workspace
+*.sublime-project
+
+# Visual Studio for Mac
+.vscode/
+
+# General
+
+# OS-specific files
+Desktop.ini
+*.bak
+*.swp
